@@ -6,6 +6,7 @@
 #include <map>
 #include <string>
 #include <memory>
+#include <tuple>
 
 /**
  * Simple PDN Network structure for sensitivity analysis
