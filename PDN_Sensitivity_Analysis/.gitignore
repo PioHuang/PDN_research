@@ -1,0 +1,9 @@
+build/
+*.o
+*.csv
+pdn_sensitivity
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
