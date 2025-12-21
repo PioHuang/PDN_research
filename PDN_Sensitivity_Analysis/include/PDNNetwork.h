@@ -48,6 +48,11 @@ public:
     // Build network from pixel models
     void buildNetwork();
     
+    // Build network with per-branch resistances
+    // branchResistances: map from (layer, row, col, direction) to resistance value
+    void buildNetworkWithPerBranchResistances(
+        const std::map<std::tuple<int, int, int, std::string>, double>& branchResistances);
+    
     // Get network statistics
     int getNodeCount() const { return _nodes.size(); }
     int getBranchCount() const { return _branches.size(); }
@@ -68,6 +73,9 @@ public:
     
     // Print network info
     void printNetworkInfo() const;
+    
+    // Export branch data for visualization
+    void exportBranchDataForVisualization(const std::string& filename) const;
 
 private:
     int _rows, _cols, _layers;
