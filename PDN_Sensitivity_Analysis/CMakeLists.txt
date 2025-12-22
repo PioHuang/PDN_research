@@ -20,16 +20,27 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 set(CORE_SOURCES
     src/PixelModel.cpp
     src/PDNNetwork.cpp
+    src/VoltSpotVirtualGrid.cpp
+    src/PDNLoadMapper.cpp
 )
 
 # Example executable
-add_executable(pdn_example src/example.cpp ${CORE_SOURCES})
+add_executable(pdn_example src/examples/example.cpp ${CORE_SOURCES})
+
+# VoltSpot virtual grid extraction example
+add_executable(voltspot_grid_example src/examples/voltspot_grid_example.cpp ${CORE_SOURCES})
+
+# PDN load mapper example
+add_executable(pdn_load_example src/examples/pdn_load_example.cpp ${CORE_SOURCES})
 
 # Compiler-specific options
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(pdn_example PRIVATE -Wall -Wextra)
+    target_compile_options(voltspot_grid_example PRIVATE -Wall -Wextra)
+    target_compile_options(pdn_load_example PRIVATE -Wall -Wextra)
 endif()
 
 # Installation (optional)
 install(TARGETS pdn_example DESTINATION bin)
-
+install(TARGETS voltspot_grid_example DESTINATION bin)
+install(TARGETS pdn_load_example DESTINATION bin)

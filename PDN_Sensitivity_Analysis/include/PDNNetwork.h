@@ -76,6 +76,9 @@ public:
     
     // Export branch data for visualization
     void exportBranchDataForVisualization(const std::string& filename) const;
+    
+    // Export node data for visualization (including voltage sources and current loads)
+    void exportNodeDataForVisualization(const std::string& filename) const;
 
 private:
     int _rows, _cols, _layers;

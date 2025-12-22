@@ -303,3 +303,35 @@ void PDNNetwork::exportBranchDataForVisualization(const std::string& filename) c
     std::cout << "Branch data exported to " << filename << std::endl;
 }
 
+void PDNNetwork::exportNodeDataForVisualization(const std::string& filename) const {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error: Cannot open file " << filename << std::endl;
+        return;
+    }
+    
+    // Header
+    file << "layer,row,col,pgNet,nodeId,voltage,currentLoad" << std::endl;
+    
+    // Export all nodes with their coordinates
+    for (const auto& [key, nodeId] : _nodeMap) {
+        int layer = std::get<0>(key);
+        int row = std::get<1>(key);
+        int col = std::get<2>(key);
+        std::string pgNet = std::get<3>(key);
+        
+        // Find the node
+        for (const auto& node : _nodes) {
+            if (node.id == nodeId) {
+                file << layer << "," << row << "," << col << "," << pgNet << ","
+                     << nodeId << "," << std::fixed << std::setprecision(8)
+                     << node.voltage << "," << node.currentLoad << std::endl;
+                break;
+            }
+        }
+    }
+    
+    file.close();
+    std::cout << "Node data exported to " << filename << std::endl;
+}
+
