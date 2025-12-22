@@ -19,9 +19,10 @@ public:
         double voltage;
         double currentLoad;
         std::string pgNetName;  // Power/Ground net name (e.g., "VDD", "GND")
+        bool isPad;             // True if this node is a pad (voltage source location in padloc)
         
-        Node(int id = 0, double voltage = 0.0, double currentLoad = 0.0, const std::string& pgNet = "")
-            : id(id), voltage(voltage), currentLoad(currentLoad), pgNetName(pgNet) {}
+        Node(int id = 0, double voltage = 0.0, double currentLoad = 0.0, const std::string& pgNet = "", bool isPad = false)
+            : id(id), voltage(voltage), currentLoad(currentLoad), pgNetName(pgNet), isPad(isPad) {}
     };
 
     struct Branch {
@@ -43,7 +44,8 @@ public:
     // Node operations
     Node* getNode(int layer, int row, int col, const std::string& pgNet = "VDD");
     void setCurrentLoad(int layer, int row, int col, double current, const std::string& pgNet = "VDD");
-    void setVoltageSource(int layer, int row, int col, double voltage, const std::string& pgNet = "VDD");
+    // If isPad=true, marks this node as a pad location (independent of voltage value).
+    void setVoltageSource(int layer, int row, int col, double voltage, const std::string& pgNet = "VDD", bool isPad = false);
     
     // Build network from pixel models
     void buildNetwork();

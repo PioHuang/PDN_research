@@ -225,7 +225,7 @@ void PDNLoadMapper::loadVoltageSources(PDNNetwork &network, const std::string &p
     const double chipWidth_m = gridResult.chip.width_m;
     const double chipHeight_m = gridResult.chip.height_m;
     const double padPitch_m = gridResult.padPitch_m;
-    const int gridIntv = gridResult.gridIntv;
+    // const int gridIntv = gridResult.gridIntv; // (unused)
 
     int padCount = 0;
     int invalidCount = 0;
@@ -283,12 +283,12 @@ void PDNLoadMapper::loadVoltageSources(PDNNetwork &network, const std::string &p
         // Set voltage source
         if (padType == "V" || padType == "v")
         {
-            network.setVoltageSource(0, gridY, gridX, vddVoltage, "VDD");
+            network.setVoltageSource(0, gridY, gridX, vddVoltage, "VDD", true);
             padCount++;
         }
         else if (padType == "G" || padType == "g")
         {
-            network.setVoltageSource(0, gridY, gridX, gndVoltage, "GND");
+            network.setVoltageSource(0, gridY, gridX, gndVoltage, "GND", true);
             padCount++;
         }
         else
@@ -383,7 +383,10 @@ void PDNLoadMapper::loadCurrentLoads(PDNNetwork &network, const std::string &flp
                     double cellPowerW = powerW * powerFraction;
                     double cellCurrentA = cellPowerW / supplyVoltage;
 
-                    auto key = std::make_pair(gridY, gridX);
+                    // VoltSpot internal grid indexing uses row 0 at TOP, while physical Y=0 is at BOTTOM.
+                    // Convert physical-grid row (bottom-origin) to internal row (top-origin).
+                    int internalRow = (gridRows - 1) - gridY;
+                    auto key = std::make_pair(internalRow, gridX);
                     gridCurrentLoads[key] += cellCurrentA;
                 }
             }
@@ -396,7 +399,10 @@ void PDNLoadMapper::loadCurrentLoads(PDNNetwork &network, const std::string &flp
     {
         int gridY = key.first;
         int gridX = key.second;
+        // VoltSpot models load current between VDD and GND rails:
+        // VDD gets -I in RHS, GND gets +I in RHS. Store the same magnitude on both.
         network.setCurrentLoad(0, gridY, gridX, current, "VDD");
+        network.setCurrentLoad(0, gridY, gridX, current, "GND");
         loadCount++;
     }
 

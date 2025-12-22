@@ -26,60 +26,33 @@ PDNSolver::SolverResult PDNSolver::solveSteadyState(PDNNetwork &network,
         std::map<int, std::tuple<int, int, int, std::string>> nodeIdToCoords;
         buildNodeCoordinateMap(network, nodeIdToCoords);
 
-        // Build pad location map (for voltage sources)
-        // Note: VDD pads have voltage != 0.0, but GND pads have voltage == 0.0
-        // So we need to check both VDD and GND nodes separately
-        std::map<std::tuple<int, int, int>, bool> padLocations;
+        // Build pad location map (for pad resistors / rail reference)
+        // We must NOT infer pads from node.voltage (because GND pads can be 0V).
+        // Instead, rely on network nodes explicitly marked as pad (from padloc file).
+        // Value is a bitmask: 1 = VDD pad, 2 = GND pad.
+        std::map<std::tuple<int, int, int>, int> padMask;
         const auto nodes = network.getNodes();
-
-        // First, identify VDD pads (voltage != 0.0)
         for (const auto &node : nodes)
         {
-            if (node.pgNetName == "VDD" && node.voltage != 0.0)
-            {
-                auto it = nodeIdToCoords.find(node.id);
-                if (it != nodeIdToCoords.end())
-                {
-                    int layer = std::get<0>(it->second);
-                    int row = std::get<1>(it->second);
-                    int col = std::get<2>(it->second);
-                    padLocations[{layer, row, col}] = true;
-                }
-            }
-        }
+            if (!node.isPad)
+                continue;
+            if (node.pgNetName != "VDD" && node.pgNetName != "GND")
+                continue;
 
-        // Then, identify GND pads (voltage == 0.0 but explicitly set as pad)
-        // Heuristic: if there's a VDD pad at the same location, assume GND is also a pad
-        // This works because VDD and GND pads are typically co-located
-        for (const auto &node : nodes)
-        {
-            if (node.pgNetName == "GND")
-            {
-                auto it = nodeIdToCoords.find(node.id);
-                if (it != nodeIdToCoords.end())
-                {
-                    int layer = std::get<0>(it->second);
-                    int row = std::get<1>(it->second);
-                    int col = std::get<2>(it->second);
-                    // If there's already a pad at this location (from VDD), mark it
-                    // OR if it's on layer 0 and we want to be more inclusive,
-                    // we could mark all GND nodes on layer 0 as pads, but that's too broad
-                    // Better: check if there's a VDD pad at the same location
-                    if (padLocations.find({layer, row, col}) != padLocations.end())
-                    {
-                        // Already marked by VDD pad, keep it
-                    }
-                    else if (layer == 0)
-                    {
-                        // Check if there's a VDD pad at the same location
-                        auto *vddNode = network.getNode(layer, row, col, "VDD");
-                        if (vddNode && vddNode->voltage != 0.0)
-                        {
-                            padLocations[{layer, row, col}] = true;
-                        }
-                    }
-                }
-            }
+            auto it = nodeIdToCoords.find(node.id);
+            if (it == nodeIdToCoords.end())
+                continue;
+
+            int layer = std::get<0>(it->second);
+            int row = std::get<1>(it->second);
+            int col = std::get<2>(it->second);
+
+            // VoltSpot pads are on layer 0 in this flow
+            if (layer != 0)
+                continue;
+
+            int bit = (node.pgNetName == "VDD") ? 1 : 2;
+            padMask[{layer, row, col}] |= bit;
         }
 
         // Calculate matrix size (VoltSpot style: 2 * nl * nr * nc)
@@ -91,12 +64,12 @@ PDNSolver::SolverResult PDNSolver::solveSteadyState(PDNNetwork &network,
         // Build conductance matrix
         std::vector<int> rowIndices, colIndices;
         std::vector<double> values;
-        buildConductanceMatrix(network, nodeIdToCoords, padLocations, padResistance,
+        buildConductanceMatrix(network, nodeIdToCoords, padMask, padResistance,
                                rowIndices, colIndices, values);
 
         // Build RHS vector
         std::vector<double> rhs(numNodes, 0.0);
-        buildRHSVector(network, nodeIdToCoords, padLocations, vddVoltage, gndVoltage, padResistance, rhs);
+        buildRHSVector(network, padMask, vddVoltage, gndVoltage, padResistance, rhs);
 
         // Build Eigen sparse matrix
         SparseMatrix<double> G(numNodes, numNodes);
@@ -242,7 +215,7 @@ int PDNSolver::nodeIdToVoltSpotIndex(int nodeId,
 
 void PDNSolver::buildConductanceMatrix(const PDNNetwork &network,
                                        const std::map<int, std::tuple<int, int, int, std::string>> &nodeIdToCoords,
-                                       const std::map<std::tuple<int, int, int>, bool> &padLocations,
+                                       const std::map<std::tuple<int, int, int>, int> &padMask,
                                        double padResistance,
                                        std::vector<int> &rowIndices,
                                        std::vector<int> &colIndices,
@@ -343,17 +316,26 @@ void PDNSolver::buildConductanceMatrix(const PDNNetwork &network,
     }
 
     // Add pad resistance contributions (VoltSpot style: add 1/Rp to diagonal for pad nodes)
-    for (const auto &padEntry : padLocations)
+    // Important: both VDD and GND pads must be included to provide a reference for the GND grid.
+    for (const auto &padEntry : padMask)
     {
         int layer = std::get<0>(padEntry.first);
         int row = std::get<1>(padEntry.first);
         int col = std::get<2>(padEntry.first);
+        int mask = padEntry.second;
 
-        // Only add pad resistance to VDD nodes on layer 0 (VoltSpot convention)
-        if (layer == 0 && padResistance > 0.0)
+        if (layer != 0 || padResistance <= 0.0)
+            continue;
+
+        if (mask & 1)
         {
-            int vsIdx = layer * nr * nc + row * nc + col; // VDD node
-            matrixEntries[{vsIdx, vsIdx}] += 1.0 / padResistance;
+            int vddIdx = layer * nr * nc + row * nc + col;
+            matrixEntries[{vddIdx, vddIdx}] += 1.0 / padResistance;
+        }
+        if (mask & 2)
+        {
+            int gndIdx = (nl * nr * nc) + layer * nr * nc + row * nc + col;
+            matrixEntries[{gndIdx, gndIdx}] += 1.0 / padResistance;
         }
     }
 
@@ -371,8 +353,7 @@ void PDNSolver::buildConductanceMatrix(const PDNNetwork &network,
 }
 
 void PDNSolver::buildRHSVector(const PDNNetwork &network,
-                               const std::map<int, std::tuple<int, int, int, std::string>> &nodeIdToCoords,
-                               const std::map<std::tuple<int, int, int>, bool> &padLocations,
+                               const std::map<std::tuple<int, int, int>, int> &padMask,
                                double vddVoltage,
                                double gndVoltage,
                                double padResistance,
@@ -384,64 +365,38 @@ void PDNSolver::buildRHSVector(const PDNNetwork &network,
     const int numNodes = 2 * nl * nr * nc;
     rhs.resize(numNodes, 0.0);
 
-    const auto nodes = network.getNodes();
-
-    // Build map from VoltSpot index to node
-    std::map<int, const PDNNetwork::Node *> vsIndexToNode;
-    for (const auto &node : nodes)
-    {
-        int vsIdx = nodeIdToVoltSpotIndex(node.id, network, nodeIdToCoords);
-        if (vsIdx >= 0)
-        {
-            vsIndexToNode[vsIdx] = &node;
-        }
-    }
-
-    // Build RHS following VoltSpot's approach
+    // VoltSpot steady-state RHS uses load current between VDD and GND rails:
+    //   VDD node: rhs -= Iload
+    //   GND node: rhs += Iload
+    // And pads provide rail reference through padResistance:
+    //   VDD pad: +vdd/Rp
+    //   GND pad: +gnd/Rp
     for (int l = 0; l < nl; l++)
     {
         for (int r = 0; r < nr; r++)
         {
             for (int c = 0; c < nc; c++)
             {
-                // VDD nodes
-                int vsIdxVDD = l * nr * nc + r * nc + c;
-                auto itVDD = vsIndexToNode.find(vsIdxVDD);
-                if (itVDD != vsIndexToNode.end())
-                {
-                    const auto *node = itVDD->second;
-                    bool hasPad = (l == 0 && padLocations.find({l, r, c}) != padLocations.end());
+                const int vddIdx = l * nr * nc + r * nc + c;
+                const int gndIdx = (nl * nr * nc) + l * nr * nc + r * nc + c;
 
-                    if (hasPad && padResistance > 0.0)
-                    {
-                        // VoltSpot: rhs = vdd/Rp - power/(vdd-gnd)
-                        rhs[vsIdxVDD] = vddVoltage / padResistance - node->currentLoad;
-                    }
-                    else
-                    {
-                        // Regular node: rhs = -power/(vdd-gnd) = -currentLoad
-                        rhs[vsIdxVDD] = -node->currentLoad;
-                    }
+                double loadI = 0.0;
+                if (auto *vddNode = const_cast<PDNNetwork &>(network).getNode(l, r, c, "VDD"))
+                {
+                    loadI = vddNode->currentLoad;
                 }
 
-                // GND nodes
-                int vsIdxGND = nl * nr * nc + l * nr * nc + r * nc + c;
-                auto itGND = vsIndexToNode.find(vsIdxGND);
-                if (itGND != vsIndexToNode.end())
-                {
-                    const auto *node = itGND->second;
-                    bool hasPad = (l == 0 && padLocations.find({l, r, c}) != padLocations.end());
+                rhs[vddIdx] = -loadI;
+                rhs[gndIdx] = +loadI;
 
-                    if (hasPad && padResistance > 0.0)
-                    {
-                        // VoltSpot: rhs = gnd/Rp + power/(vdd-gnd)
-                        rhs[vsIdxGND] = gndVoltage / padResistance + node->currentLoad;
-                    }
-                    else
-                    {
-                        // Regular node: rhs = power/(vdd-gnd) = currentLoad
-                        rhs[vsIdxGND] = node->currentLoad;
-                    }
+                auto it = padMask.find({l, r, c});
+                if (it != padMask.end() && padResistance > 0.0)
+                {
+                    int mask = it->second;
+                    if (mask & 1)
+                        rhs[vddIdx] += vddVoltage / padResistance;
+                    if (mask & 2)
+                        rhs[gndIdx] += gndVoltage / padResistance;
                 }
             }
         }

@@ -76,7 +76,7 @@ private:
      */
     static void buildConductanceMatrix(const PDNNetwork& network,
                                       const std::map<int, std::tuple<int, int, int, std::string>>& nodeIdToCoords,
-                                      const std::map<std::tuple<int, int, int>, bool>& padLocations,
+                                      const std::map<std::tuple<int, int, int>, int>& padMask,
                                       double padResistance,
                                       std::vector<int>& rowIndices,
                                       std::vector<int>& colIndices,
@@ -87,8 +87,7 @@ private:
      * RHS = current loads + voltage source contributions
      */
     static void buildRHSVector(const PDNNetwork& network,
-                              const std::map<int, std::tuple<int, int, int, std::string>>& nodeIdToCoords,
-                              const std::map<std::tuple<int, int, int>, bool>& padLocations,
+                              const std::map<std::tuple<int, int, int>, int>& padMask,
                               double vddVoltage,
                               double gndVoltage,
                               double padResistance,

@@ -47,6 +47,7 @@ def read_nodes_csv(nodes_path: Path) -> Dict[Tuple[int, int, int], dict]:
                 'nodeId': int(row['nodeId']),
                 'voltage': float(row['voltage']),
                 'currentLoad': float(row['currentLoad']),
+                'isPad': int(row.get('isPad', '0')),
             }
     return nodes
 
@@ -89,7 +90,8 @@ def visualize_pdn(branches: list, nodes: Dict[Tuple[int, int, int], dict],
         if l != layer:
             continue
         
-        if node_info['voltage'] != 0.0:
+        # Prefer explicit pad flag (so GND pads at 0V are still treated as voltage sources)
+        if node_info.get('isPad', 0) != 0:
             voltage_source_nodes.append((c, r, node_info['voltage'], node_info['currentLoad']))
         elif node_info['currentLoad'] != 0.0:
             current_load_nodes.append((c, r, node_info['voltage'], node_info['currentLoad']))
@@ -139,8 +141,8 @@ def visualize_pdn(branches: list, nodes: Dict[Tuple[int, int, int], dict],
     ax.grid(True, alpha=0.3)
     ax.set_aspect('equal', adjustable='box')
     
-    # Invert y-axis to match typical grid coordinates
-    ax.invert_yaxis()
+    # NOTE: CSV rows are already in VoltSpot coordinate convention (bottom-origin),
+    # so we do NOT invert y-axis here.
     
     plt.tight_layout()
     plt.savefig(out_path, dpi=300, bbox_inches='tight')

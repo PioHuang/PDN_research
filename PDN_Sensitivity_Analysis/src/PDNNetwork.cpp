@@ -71,15 +71,21 @@ void PDNNetwork::setCurrentLoad(int layer, int row, int col, double current, con
     }
 }
 
-void PDNNetwork::setVoltageSource(int layer, int row, int col, double voltage, const std::string& pgNet) {
+void PDNNetwork::setVoltageSource(int layer, int row, int col, double voltage, const std::string& pgNet, bool isPad) {
     Node* node = getNode(layer, row, col, pgNet);
     if (node) {
         node->voltage = voltage;
+        if (isPad) {
+            node->isPad = true;
+        }
     } else {
         int nodeId = getNodeId(layer, row, col, pgNet);
         for (auto& n : _nodes) {
             if (n.id == nodeId) {
                 n.voltage = voltage;
+                if (isPad) {
+                    n.isPad = true;
+                }
                 break;
             }
         }
@@ -263,6 +269,8 @@ void PDNNetwork::exportBranchDataForVisualization(const std::string& filename) c
     }
     
     // Header
+    // Note: row is exported in VoltSpot coordinate convention (bottom-origin):
+    // row_out = (rows - 1) - row_internal
     file << "layer,row,col,direction,resistance,node1,node2" << std::endl;
     
     // Build reverse mapping: node ID -> grid coordinates
@@ -290,7 +298,7 @@ void PDNNetwork::exportBranchDataForVisualization(const std::string& filename) c
             
             // Use the "from" node coordinates for branch location
             int branchLayer = layer1;
-            int branchRow = row1;
+            int branchRow = (_rows - 1) - row1; // VoltSpot bottom-origin
             int branchCol = col1;
             
             file << branchLayer << "," << branchRow << "," << branchCol << ","
@@ -311,7 +319,9 @@ void PDNNetwork::exportNodeDataForVisualization(const std::string& filename) con
     }
     
     // Header
-    file << "layer,row,col,pgNet,nodeId,voltage,currentLoad" << std::endl;
+    // Note: row is exported in VoltSpot coordinate convention (bottom-origin):
+    // row_out = (rows - 1) - row_internal
+    file << "layer,row,col,pgNet,nodeId,voltage,currentLoad,isPad" << std::endl;
     
     // Export all nodes with their coordinates
     for (const auto& [key, nodeId] : _nodeMap) {
@@ -319,13 +329,15 @@ void PDNNetwork::exportNodeDataForVisualization(const std::string& filename) con
         int row = std::get<1>(key);
         int col = std::get<2>(key);
         std::string pgNet = std::get<3>(key);
+
+        int row_out = (_rows - 1) - row; // VoltSpot bottom-origin
         
         // Find the node
         for (const auto& node : _nodes) {
             if (node.id == nodeId) {
-                file << layer << "," << row << "," << col << "," << pgNet << ","
+                file << layer << "," << row_out << "," << col << "," << pgNet << ","
                      << nodeId << "," << std::fixed << std::setprecision(8)
-                     << node.voltage << "," << node.currentLoad << std::endl;
+                     << node.voltage << "," << node.currentLoad << "," << (node.isPad ? 1 : 0) << std::endl;
                 break;
             }
         }
