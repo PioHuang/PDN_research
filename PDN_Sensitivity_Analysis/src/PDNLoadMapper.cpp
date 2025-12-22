@@ -304,6 +304,59 @@ void PDNLoadMapper::loadVoltageSources(PDNNetwork &network, const std::string &p
     }
 }
 
+void PDNLoadMapper::allocatePadsAllSeats(PDNNetwork &network,
+                                         const VoltSpotVirtualGrid::Result &gridResult,
+                                         double vddVoltage,
+                                         double gndVoltage)
+{
+    const int gridRows = gridResult.grid.rows;
+    const int gridCols = gridResult.grid.cols;
+    const int gridIntv = gridResult.gridIntv;
+    if (gridIntv < 1)
+    {
+        throw std::runtime_error("Invalid gridIntv (must be >= 1)");
+    }
+
+    // Recover pad grid size from VoltSpot sizing:
+    // rows = gridIntv * (padRows - 1) + 1  => padRows = (rows - 1)/gridIntv + 1
+    // cols = gridIntv * (padCols - 1) + 1  => padCols = (cols - 1)/gridIntv + 1
+    const int padRows = (gridRows - 1) / gridIntv + 1;
+    const int padCols = (gridCols - 1) / gridIntv + 1;
+
+    int padCount = 0;
+    int vCount = 0;
+    int gCount = 0;
+
+    // Use internal (top-origin) row indexing. Pad seats sit every gridIntv points.
+    for (int pr = 0; pr < padRows; pr++)
+    {
+        for (int pc = 0; pc < padCols; pc++)
+        {
+            const int row = pr * gridIntv;
+            const int col = pc * gridIntv;
+            if (row < 0 || row >= gridRows || col < 0 || col >= gridCols)
+                continue;
+
+            // Simple interleaved pattern (checkerboard) across pad seats.
+            const bool isVdd = ((pr + pc) % 2 == 0);
+            if (isVdd)
+            {
+                network.setVoltageSource(0, row, col, vddVoltage, "VDD", true);
+                vCount++;
+            }
+            else
+            {
+                network.setVoltageSource(0, row, col, gndVoltage, "GND", true);
+                gCount++;
+            }
+            padCount++;
+        }
+    }
+
+    std::cout << "Allocated " << padCount << " pads across all pad seats "
+              << "(V=" << vCount << ", G=" << gCount << "), gridIntv=" << gridIntv << std::endl;
+}
+
 void PDNLoadMapper::loadCurrentLoads(PDNNetwork &network, const std::string &flpPath,
                                      const std::string &ptracePath,
                                      const VoltSpotVirtualGrid::Result &gridResult,

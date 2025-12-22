@@ -1,4 +1,12 @@
-# make
+### NOTE
+
+這份檔名是早期誤植（`REAME.md`）。完整的「flow 懶人包 + 細節 + solver 數學例子」請看：
+
+- `README.md`
+
+---
+
+### make
 
 cd build
 cmake ..

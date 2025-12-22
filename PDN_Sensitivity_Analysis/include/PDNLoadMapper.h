@@ -37,6 +37,15 @@ public:
                                 const std::string& ptracePath,
                                 const VoltSpotVirtualGrid::Result& gridResult,
                                 double supplyVoltage = 1.0);
+
+    /**
+     * Allocate P/G pads to all available pad seats (VoltSpot behavior when PDN_padconfig != 0).
+     * Uses a simple interleaved checkerboard pattern on the pad grid.
+     */
+    static void allocatePadsAllSeats(PDNNetwork& network,
+                                     const VoltSpotVirtualGrid::Result& gridResult,
+                                     double vddVoltage = 1.0,
+                                     double gndVoltage = 0.0);
 };
 
 #endif // PDN_LOAD_MAPPER_H

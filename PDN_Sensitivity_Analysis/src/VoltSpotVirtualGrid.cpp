@@ -154,6 +154,16 @@ VoltSpotVirtualGrid::Config VoltSpotVirtualGrid::configFromMap(const std::unorde
         cfg.gridIntv = parseInt(itIntv->second);
     }
 
+    const auto itPadR = kv.find("PDN_padR");
+    if (itPadR != kv.end()) {
+        cfg.padR_ohm = parseDouble(itPadR->second);
+    }
+
+    const auto itPadCfg = kv.find("PDN_padconfig");
+    if (itPadCfg != kv.end()) {
+        cfg.padConfig = parseInt(itPadCfg->second);
+    }
+
     const auto itMlcf = kv.find("mlayer_spec_file");
     if (itMlcf != kv.end() && !isNullToken(itMlcf->second)) {
         cfg.mlcfPath = itMlcf->second;

@@ -47,6 +47,8 @@ public:
 
     struct Config {
         double padPitch_m = 0.0;
+        double padR_ohm = 10e-3; // VoltSpot default PDN_padR
+        int padConfig = 1;       // VoltSpot default PDN_padconfig
         int gridIntv = 0;
         std::string mlcfPath;
     };
