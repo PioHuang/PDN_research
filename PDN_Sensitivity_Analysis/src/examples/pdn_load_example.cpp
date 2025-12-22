@@ -1,16 +1,19 @@
 #include "PDNNetwork.h"
 #include "PDNLoadMapper.h"
+#include "PDNSolver.h"
 #include "PixelModel.h"
 #include "VoltSpotVirtualGrid.h"
 
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
 
-static void usage() {
+static void usage()
+{
     std::cout << "Usage:\n"
               << "  pdn_load_example --flp <path> --config <path> [options]\n"
               << "\n"
@@ -41,7 +44,8 @@ static void usage() {
               << "    --ptrace ../../VoltSpot/example.ptrace\n";
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
     std::string flpPath;
     std::string cfgPath;
     std::string padlocPath;
@@ -52,50 +56,76 @@ int main(int argc, char** argv) {
     double gndVoltage = 0.0;
     int padlocFormat = 0;
 
-    for (int i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; i++)
+    {
         const std::string arg = argv[i];
-        auto needValue = [&](const std::string& name) -> std::string {
-            if (i + 1 >= argc) {
+        auto needValue = [&](const std::string &name) -> std::string
+        {
+            if (i + 1 >= argc)
+            {
                 throw std::runtime_error("Missing value for " + name);
             }
             return argv[++i];
         };
 
-        if (arg == "--flp") {
+        if (arg == "--flp")
+        {
             flpPath = needValue(arg);
-        } else if (arg == "--config") {
+        }
+        else if (arg == "--config")
+        {
             cfgPath = needValue(arg);
-        } else if (arg == "--padloc") {
+        }
+        else if (arg == "--padloc")
+        {
             padlocPath = needValue(arg);
-        } else if (arg == "--ptrace") {
+        }
+        else if (arg == "--ptrace")
+        {
             ptracePath = needValue(arg);
-        } else if (arg == "--mlcf") {
+        }
+        else if (arg == "--mlcf")
+        {
             mlcfPath = needValue(arg);
-        } else if (arg == "--vdd") {
+        }
+        else if (arg == "--vdd")
+        {
             vddVoltage = std::stod(needValue(arg));
-        } else if (arg == "--gnd") {
+        }
+        else if (arg == "--gnd")
+        {
             gndVoltage = std::stod(needValue(arg));
-        } else if (arg == "--padloc_format") {
+        }
+        else if (arg == "--padloc_format")
+        {
             padlocFormat = std::stoi(needValue(arg));
-        } else if (arg == "--out") {
+        }
+        else if (arg == "--out")
+        {
             outCsv = needValue(arg);
-        } else if (arg == "-h" || arg == "--help") {
+        }
+        else if (arg == "-h" || arg == "--help")
+        {
             usage();
             return 0;
-        } else {
+        }
+        else
+        {
             std::cerr << "Unknown arg: " << arg << "\n";
             usage();
             return 2;
         }
     }
 
-    if (flpPath.empty() || cfgPath.empty()) {
+    if (flpPath.empty() || cfgPath.empty())
+    {
         std::cerr << "Error: --flp and --config are required\n";
         usage();
         return 2;
     }
 
-    try {
+    try
+    {
         // Step 1: Parse chip size from FLP file
         std::cout << "Step 1: Parsing chip size from FLP file..." << std::endl;
         const auto chip = VoltSpotVirtualGrid::parseVoltSpotFlpChipSize(flpPath);
@@ -105,7 +135,8 @@ int main(int argc, char** argv) {
         std::cout << "\nStep 2: Parsing config file..." << std::endl;
         const auto kv = VoltSpotVirtualGrid::parseVoltSpotConfigFile(cfgPath);
         auto cfg = VoltSpotVirtualGrid::configFromMap(kv);
-        if (!mlcfPath.empty()) {
+        if (!mlcfPath.empty())
+        {
             cfg.mlcfPath = mlcfPath;
         }
 
@@ -121,9 +152,11 @@ int main(int argc, char** argv) {
         PDNNetwork network(gridResult.grid.rows, gridResult.grid.cols, 1);
         std::vector<std::vector<std::unique_ptr<PixelModel>>> pixels;
         pixels.resize(static_cast<size_t>(gridResult.grid.rows));
-        for (int r = 0; r < gridResult.grid.rows; r++) {
+        for (int r = 0; r < gridResult.grid.rows; r++)
+        {
             pixels[static_cast<size_t>(r)].resize(static_cast<size_t>(gridResult.grid.cols));
-            for (int c = 0; c < gridResult.grid.cols; c++) {
+            for (int c = 0; c < gridResult.grid.cols; c++)
+            {
                 const std::string name = "pixel_r" + std::to_string(r) + "_c" + std::to_string(c);
                 pixels[static_cast<size_t>(r)][static_cast<size_t>(c)] =
                     std::make_unique<PixelModel>(name, static_cast<float>(gridResult.r.rx_edge_ohm),
@@ -138,42 +171,88 @@ int main(int argc, char** argv) {
         network.printNetworkInfo();
 
         // Step 6: Load voltage sources from padloc file
-        if (!padlocPath.empty()) {
+        if (!padlocPath.empty())
+        {
             std::cout << "\nStep 6: Loading voltage sources from padloc file..." << std::endl;
-            if (!std::filesystem::exists(padlocPath)) {
+            if (!std::filesystem::exists(padlocPath))
+            {
                 std::cerr << "Warning: Padloc file not found: " << padlocPath << std::endl;
-            } else {
-                PDNLoadMapper::loadVoltageSources(network, padlocPath, gridResult, 
+            }
+            else
+            {
+                PDNLoadMapper::loadVoltageSources(network, padlocPath, gridResult,
                                                   vddVoltage, gndVoltage, padlocFormat);
             }
-        } else {
+        }
+        else
+        {
             std::cout << "\nStep 6: Skipping voltage sources (--padloc not specified)" << std::endl;
         }
 
         // Step 7: Load current loads from FLP and PTrace files
-        if (!ptracePath.empty()) {
+        if (!ptracePath.empty())
+        {
             std::cout << "\nStep 7: Loading current loads from FLP and PTrace files..." << std::endl;
-            if (!std::filesystem::exists(ptracePath)) {
+            if (!std::filesystem::exists(ptracePath))
+            {
                 std::cerr << "Warning: PTrace file not found: " << ptracePath << std::endl;
-            } else {
+            }
+            else
+            {
                 PDNLoadMapper::loadCurrentLoads(network, flpPath, ptracePath, gridResult, vddVoltage);
             }
-        } else {
+        }
+        else
+        {
             std::cout << "\nStep 7: Skipping current loads (--ptrace not specified)" << std::endl;
         }
 
         // Step 8: Export results
         std::cout << "\nStep 8: Exporting branch and node data..." << std::endl;
         const std::filesystem::path outPath(outCsv);
-        if (outPath.has_parent_path()) {
+        if (outPath.has_parent_path())
+        {
             std::filesystem::create_directories(outPath.parent_path());
         }
         network.exportBranchDataForVisualization(outCsv);
-        
+
         // Export node data (for visualization of voltage sources and current loads)
         std::filesystem::path nodeCsvPath = outPath;
         nodeCsvPath.replace_filename(outPath.stem().string() + "_nodes.csv");
         network.exportNodeDataForVisualization(nodeCsvPath.string());
+
+        // Step 9: Solve IR drop
+        std::cout << "\nStep 9: Solving IR drop..." << std::endl;
+        double padResistance = 0.001; // Default pad resistance (can be made configurable)
+        auto solverResult = PDNSolver::solveSteadyState(network, vddVoltage, gndVoltage, padResistance);
+
+        if (solverResult.success)
+        {
+            std::cout << "  ✓ Solver converged successfully" << std::endl;
+            std::cout << "  Max IR drop: " << std::fixed << std::setprecision(3)
+                      << solverResult.maxIRDrop << "%" << std::endl;
+            std::cout << "  Avg IR drop: " << std::fixed << std::setprecision(3)
+                      << solverResult.avgIRDrop << "%" << std::endl;
+
+            // Update network voltages with solved values
+            PDNSolver::updateNetworkVoltages(network, solverResult);
+
+            // Export IR drop results (VoltSpot format)
+            std::filesystem::path irDropPath = outPath;
+            irDropPath.replace_filename("ir_drop.gridIR");
+            PDNSolver::exportIRDropResults(network, solverResult, irDropPath.string(),
+                                           vddVoltage, gndVoltage);
+            std::cout << "  IR drop results exported to: "
+                      << std::filesystem::absolute(irDropPath) << std::endl;
+            std::cout << "  To visualize, run:" << std::endl;
+            std::cout << "    python3 tools/visualize_ir_drop.py --gridir "
+                      << std::filesystem::absolute(irDropPath)
+                      << " --out " << irDropPath.parent_path() / "ir_drop_visualization.png" << std::endl;
+        }
+        else
+        {
+            std::cerr << "  ✗ Solver failed: " << solverResult.errorMessage << std::endl;
+        }
 
         // Summary
         std::cout << "\n========================================" << std::endl;
@@ -182,16 +261,19 @@ int main(int argc, char** argv) {
         std::cout << "Grid size: " << gridResult.grid.rows << " x " << gridResult.grid.cols << std::endl;
         std::cout << "Total nodes: " << network.getNodeCount() << std::endl;
         std::cout << "Total branches: " << network.getBranchCount() << std::endl;
-        
+
         // Count voltage sources and current loads
         int voltageSourceCount = 0;
         int currentLoadCount = 0;
         auto nodes = network.getNodes();
-        for (const auto& node : nodes) {
-            if (node.voltage != 0.0) {
+        for (const auto &node : nodes)
+        {
+            if (node.voltage != 0.0)
+            {
                 voltageSourceCount++;
             }
-            if (node.currentLoad != 0.0) {
+            if (node.currentLoad != 0.0)
+            {
                 currentLoadCount++;
             }
         }
@@ -199,13 +281,20 @@ int main(int argc, char** argv) {
         std::cout << "Nodes with current load: " << currentLoadCount << std::endl;
         std::cout << "Branch CSV: " << std::filesystem::absolute(outCsv) << std::endl;
         std::cout << "Node CSV: " << std::filesystem::absolute(nodeCsvPath) << std::endl;
+        if (solverResult.success)
+        {
+            std::cout << "IR Drop: Max=" << std::fixed << std::setprecision(3)
+                      << solverResult.maxIRDrop << "%, Avg="
+                      << solverResult.avgIRDrop << "%" << std::endl;
+        }
         std::cout << "========================================" << std::endl;
 
         std::cout << "\nDone!" << std::endl;
         return 0;
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception &e)
+    {
         std::cerr << "Error: " << e.what() << "\n";
         return 1;
     }
 }
-

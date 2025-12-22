@@ -18,7 +18,7 @@ make
 從 FLP 文件獲取晶片尺寸
 從 config 文件獲取 PDN 參數
 
-# Step 3: 建立 virtual grid（已整合）
+# Step 3: 建立 virtual grid
 
 計算 virtual grid 大小（rows, cols）
 計算 grid spacing（dx, dy）
@@ -33,11 +33,11 @@ make
 
 連接所有節點和分支
 
-# Step 6: 載入 voltage sources（可選）
+# Step 6: load voltage sources (optional)
 
-# Step 7: 載入 current loads（可選）
+# Step 7: load current loads (optional)
 
-# Step 8: 導出結果
+# Step 8: export results
 
 # Step 9: visualize
 
@@ -45,3 +45,5 @@ python3 tools/visualize_pdn_loads.py \
 --branches out_voltspot/pdn_with_loads_branches.csv \
 --nodes out_voltspot/pdn_with_loads_branches_nodes.csv \
 --out out_voltspot/pdn_visualization.png
+
+python3 tools/visualize_ir_drop.py --gridir out_voltspot/ir_drop.gridIR --out out_voltspot/ir_drop_visualization.png

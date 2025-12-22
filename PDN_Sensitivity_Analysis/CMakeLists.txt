@@ -16,12 +16,46 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
+# Find Eigen3
+find_package(Eigen3 QUIET)
+
+if(Eigen3_FOUND AND EIGEN3_INCLUDE_DIR)
+    include_directories(${EIGEN3_INCLUDE_DIR})
+    message(STATUS "Found Eigen3 via find_package: ${EIGEN3_INCLUDE_DIR}")
+else()
+    set(EIGEN3_POSSIBLE_PATHS
+        /opt/homebrew/opt/eigen/include/eigen3
+        /opt/homebrew/include/eigen3
+        /usr/local/opt/eigen/include/eigen3
+        /usr/local/include/eigen3
+        /usr/include/eigen3
+        ${CMAKE_SOURCE_DIR}/third_party/eigen
+    )
+    
+    find_path(EIGEN3_INCLUDE_DIR 
+        NAMES Eigen/Dense
+        PATHS ${EIGEN3_POSSIBLE_PATHS}
+    )
+    
+    if(EIGEN3_INCLUDE_DIR)
+        include_directories(${EIGEN3_INCLUDE_DIR})
+        message(STATUS "Found Eigen3 at: ${EIGEN3_INCLUDE_DIR}")
+    else()
+        message(FATAL_ERROR "Eigen3 not found. Please install Eigen3:")
+        message(STATUS "  macOS: brew install eigen")
+        message(STATUS "  Ubuntu: sudo apt-get install libeigen3-dev")
+        message(STATUS "  Or set EIGEN3_INCLUDE_DIR manually")
+        message(STATUS "  Searched in: ${EIGEN3_POSSIBLE_PATHS}")
+    endif()
+endif()
+
 # Core library sources
 set(CORE_SOURCES
     src/PixelModel.cpp
     src/PDNNetwork.cpp
     src/VoltSpotVirtualGrid.cpp
     src/PDNLoadMapper.cpp
+    src/PDNSolver.cpp
 )
 
 # Example executable
