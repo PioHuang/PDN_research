@@ -93,7 +93,7 @@ VoltSpot 對外輸出（padloc/gridIR）用的座標習慣是：**(0,0) 在左�
 ### Padconfig
 
 - **pad 分佈模式**：`PDN_padconfig=1`（補滿所有 pad seats）vs `PDN_padconfig=0`（用稀疏 padloc）
-- **padR **：VoltSpot pdn.config 裡 `PDN_padR=10e-3`
+- **padR**：VoltSpot pdn.config 裡 `PDN_padR=10e-3`
 
 ---
 
