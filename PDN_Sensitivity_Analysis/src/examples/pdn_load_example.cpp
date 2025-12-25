@@ -35,7 +35,8 @@ static void usage()
               << "  --vdd <voltage>       VDD voltage (default: 1.0)\n"
               << "  --gnd <voltage>       GND voltage (default: 0.0)\n"
               << "  --padloc_format <n>   Pad location format: 0/1=virtual grid, 2/3=pad grid (default: 0)\n"
-              << "  --out <csv>           Output CSV file for branch data (default: pdn_with_loads_branches.csv)\n"
+              << "  --outdir <path>       Output directory for all result files (default: ../out_voltspot)\n"
+              << "  --out <csv_name>      Filename for branch data (default: pdn_with_loads_branches.csv)\n"
               << "  -h, --help            Show this help message\n"
               << "\n"
               << "Example (from build directory):\n"
@@ -53,7 +54,8 @@ int main(int argc, char **argv)
     std::string padlocPath;
     std::string ptracePath;
     std::string mlcfPath;
-    std::string outCsv = "../out_voltspot/pdn_with_loads_branches.csv";
+    std::string outDir = "../out_voltspot";
+    std::string outCsvName = "pdn_with_loads_branches.csv";
     double vddVoltage = 1.0;
     double gndVoltage = 0.0;
     int padlocFormat = 0;
@@ -102,9 +104,13 @@ int main(int argc, char **argv)
         {
             padlocFormat = std::stoi(needValue(arg));
         }
+        else if (arg == "--outdir")
+        {
+            outDir = needValue(arg);
+        }
         else if (arg == "--out")
         {
-            outCsv = needValue(arg);
+            outCsvName = needValue(arg);
         }
         else if (arg == "-h" || arg == "--help")
         {
@@ -223,16 +229,18 @@ int main(int argc, char **argv)
 
         // Step 8: Export results
         std::cout << "\nStep 8: Exporting branch and node data..." << std::endl;
-        const fs::path outPath(outCsv);
-        if (outPath.has_parent_path())
+        fs::path baseDir(outDir);
+        if (!fs::exists(baseDir))
         {
-            fs::create_directories(outPath.parent_path());
+            fs::create_directories(baseDir);
         }
-        network.exportBranchDataForVisualization(outCsv);
+
+        fs::path outCsvPath = baseDir / outCsvName;
+        network.exportBranchDataForVisualization(outCsvPath.string());
 
         // Export node data (for visualization of voltage sources and current loads)
-        fs::path nodeCsvPath = outPath;
-        nodeCsvPath.replace_filename(outPath.stem().string() + "_nodes.csv");
+        fs::path nodeCsvPath = outCsvPath;
+        nodeCsvPath.replace_filename(outCsvPath.stem().string() + "_nodes.csv");
         network.exportNodeDataForVisualization(nodeCsvPath.string());
 
         // Step 9: Solve IR drop
@@ -254,8 +262,7 @@ int main(int argc, char **argv)
             PDNSolver::updateNetworkVoltages(network, solverResult);
 
             // Export IR drop results (VoltSpot format)
-            fs::path irDropPath = outPath;
-            irDropPath.replace_filename("ir_drop.gridIR");
+            fs::path irDropPath = baseDir / "ir_drop.gridIR";
             PDNSolver::exportIRDropResults(network, solverResult, irDropPath.string(),
                                            vddVoltage, gndVoltage);
             std::cout << "  IR drop results exported to: "
@@ -295,7 +302,7 @@ int main(int argc, char **argv)
         }
         std::cout << "Nodes with pad (voltage source): " << voltageSourceCount << std::endl;
         std::cout << "Nodes with current load: " << currentLoadCount << std::endl;
-        std::cout << "Branch CSV: " << fs::absolute(outCsv) << std::endl;
+        std::cout << "Branch CSV: " << fs::absolute(outCsvPath) << std::endl;
         std::cout << "Node CSV: " << fs::absolute(nodeCsvPath) << std::endl;
         if (solverResult.success)
         {

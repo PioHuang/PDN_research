@@ -26,6 +26,23 @@ python3 ../tools/visualize_pdn_loads.py \
 python3 ../tools/visualize_ir_drop.py \
   --gridir ../out_voltspot/ir_drop.gridIR \
   --out ../out_voltspot/ir_drop_visualization.png
+
+./pdn_load_example \
+  --flp "../benchmarks/testcase1/gen.flp" \
+  --config "../benchmarks/testcase1/pdn.config" \
+  --ptrace "../benchmarks/testcase1/gen.ptrace" \
+  --padloc "../benchmarks/testcase1/gen.padloc" \
+  --outdir "../benchmarks/testcase1/out" \
+  --vdd 1.8 --gnd 0
+
+python3 ../tools/visualize_pdn_loads.py \
+  --branches ../benchmarks/testcase1/out/pdn_with_loads_branches.csv \
+  --nodes ../benchmarks/testcase1/out/pdn_with_loads_branches_nodes.csv \
+  --out ../benchmarks/testcase1/out/pdn_visualization.png
+
+python3 ../tools/visualize_ir_drop.py \
+  --gridir ../benchmarks/testcase1/out/ir_drop.gridIR \
+  --out ../benchmarks/testcase1/out/ir_drop_visualization.png
 ```
 
 ---

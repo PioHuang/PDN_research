@@ -140,10 +140,10 @@ Power is computed as: `P(Bxx) = VDD * sum(I(Bxx))`.
 Example (testcase1):
 
 ```bash
-python3 PDN_research/PDN_Sensitivity_Analysis/tools/spice_to_flp_ptrace.py \
-  --spice PDN_research/PDN_Sensitivity_Analysis/benchmarks/testcase1/ibmpg1.spice \
+python3 tools/spice_to_flp_ptrace.py \
+  --spice benchmarks/testcase1/ibmpg1.spice \
   --vdd 1.8 \
-  --out_blocks_png PDN_research/PDN_Sensitivity_Analysis/benchmarks/testcase1/blocks.png
+  --out_blocks_png benchmarks/testcase1/blocks.png
 ```
 
 By default, outputs are written next to the input netlist:
