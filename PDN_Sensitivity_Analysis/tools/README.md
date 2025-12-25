@@ -63,6 +63,7 @@ python3 PDN_research/PDN_Sensitivity_Analysis/tools/spice_netviz.py \
 ```
 
 Optional:
+
 - `--z-step 2000` adjusts layer separation (default `2000`).
 - `--no-vias` omits via connections.
 - `--3d-stride 5` plots every 5th metal segment (much faster for big nets).
@@ -71,6 +72,7 @@ Optional:
 ## Pixel model export (VDD)
 
 Exports a simple pixelized VDD model from the extracted SPICE netlist:
+
 - `rx_m5.csv`, `ry_m5.csv`: per-pixel Rx/Ry for `M5,VDD`
 - `rx_m6.csv`, `ry_m6.csv`: per-pixel Rx/Ry for `M6,VDD`
 - `via_count.csv`, `rz_via.csv`: per-pixel via count and `Rz = rz_per_via / via_count` between M5 and M6
@@ -87,6 +89,7 @@ python3 PDN_research/PDN_Sensitivity_Analysis/tools/spice_netviz.py \
 ### Pixel model export (VDD, merged single-layer)
 
 Merges `M5,VDD` and `M6,VDD` into a single in-plane sheet (parallel conductance sum) and exports:
+
 - `rx.csv`, `ry.csv`, `rz.csv`, `via_count.csv`, `meta.json`
 
 ```bash
@@ -122,3 +125,28 @@ python3 PDN_research/PDN_Sensitivity_Analysis/tools/spice_netviz.py \
 - This assumes node names follow the common extracted-PDN convention `n<net>_<x>_<y>` (and `_X_n<net>_<x>_<y>`).
 - SVG edge colors map resistor values (log scale) from low (blue) to high (red).
 - For very large nets, use `--bbox` and/or `--max-edges` to keep output sizes reasonable.
+
+## `spice_to_flp_ptrace.py`
+
+Generate VoltSpot-style `*.flp` + `*.ptrace` from an extracted PDN SPICE netlist by grouping loads into `Bxx` units.
+
+This expects current sources named like:
+
+- `iB33_0_v  <VDD_node> 0 <I>`
+- `iB33_0_g  0 <GND_node> <I>` (ignored for power summation to avoid double counting)
+
+Power is computed as: `P(Bxx) = VDD * sum(I(Bxx))`.
+
+Example (testcase1):
+
+```bash
+python3 PDN_research/PDN_Sensitivity_Analysis/tools/spice_to_flp_ptrace.py \
+  --spice PDN_research/PDN_Sensitivity_Analysis/benchmarks/testcase1/ibmpg1.spice \
+  --vdd 1.8 \
+  --out_blocks_png PDN_research/PDN_Sensitivity_Analysis/benchmarks/testcase1/blocks.png
+```
+
+By default, outputs are written next to the input netlist:
+
+- `benchmarks/testcase1/gen.flp`
+- `benchmarks/testcase1/gen.ptrace`
