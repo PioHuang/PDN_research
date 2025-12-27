@@ -7,10 +7,22 @@
 ### TL;DR
 
 ```bash
+cd PDN_Sensitivity_Analysis
+cmake -S . -B build
+cmake --build build
+
 cd build
 cmake ..
 make
 
+chmod +x gen.sh # 從 spice 生成我們的輸入檔案
+chmod +x run.sh # 執行 ir drop analysis 的主程式
+
+./gen.sh testcase1 1.8   # ./gen.sh testcaseX [vdd] vdd optional
+./run.sh testcase1 1.8   # ./run.sh testcaseX [vdd]
+# 會自動導入 benchmark/testcase1 裡面準備好的輸入檔案
+
+# 如果想復刻 VoltSpot 裡面的 example (steady.gif 的圖) 直接執行以下
 ./pdn_load_example \
   --flp ../voltspot/example.flp \
   --config ../voltspot/pdn.config \
@@ -26,23 +38,6 @@ python3 ../tools/visualize_pdn_loads.py \
 python3 ../tools/visualize_ir_drop.py \
   --gridir ../out_voltspot/ir_drop.gridIR \
   --out ../out_voltspot/ir_drop_visualization.png
-
-./pdn_load_example \
-  --flp "../benchmarks/testcase1/gen.flp" \
-  --config "../benchmarks/testcase1/pdn.config" \
-  --ptrace "../benchmarks/testcase1/gen.ptrace" \
-  --padloc "../benchmarks/testcase1/gen.padloc" \
-  --outdir "../benchmarks/testcase1/out" \
-  --vdd 1.8 --gnd 0
-
-python3 ../tools/visualize_pdn_loads.py \
-  --branches ../benchmarks/testcase1/out/pdn_with_loads_branches.csv \
-  --nodes ../benchmarks/testcase1/out/pdn_with_loads_branches_nodes.csv \
-  --out ../benchmarks/testcase1/out/pdn_visualization.png
-
-python3 ../tools/visualize_ir_drop.py \
-  --gridir ../benchmarks/testcase1/out/ir_drop.gridIR \
-  --out ../benchmarks/testcase1/out/ir_drop_visualization.png
 ```
 
 ---
