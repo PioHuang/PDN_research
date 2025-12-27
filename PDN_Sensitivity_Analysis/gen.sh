@@ -24,7 +24,12 @@ if [[ $# -eq 2 ]]; then
   vdd_arg="--vdd $2"
 fi
 
-spice="benchmarks/${tc}/ibmpg1.spice"
+suffix="${tc#testcase}"
+if [[ "$suffix" == "$tc" || -z "$suffix" ]]; then
+  spice="benchmarks/${tc}/ibmpg1.spice"
+else
+  spice="benchmarks/${tc}/ibmpg${suffix}.spice"
+fi
 outdir="benchmarks/${tc}"
 blocks_png="${outdir}/blocks.png"
 
