@@ -229,6 +229,7 @@ void PDNLoadMapper::loadVoltageSources(PDNNetwork &network, const std::string &p
 
     int padCount = 0;
     int invalidCount = 0;
+    int totalCount = 0;
 
     std::string line;
     while (std::getline(in, line))
@@ -248,9 +249,22 @@ void PDNLoadMapper::loadVoltageSources(PDNNetwork &network, const std::string &p
 
         if (padlocFormat == 0 || padlocFormat == 1)
         {
-            // Virtual grid coordinates (direct)
-            x = parseInt(toks[1]);
-            y = parseInt(toks[2]);
+            // Virtual grid coordinates (direct) WITH projection into grid bounds.
+            int rawX = parseInt(toks[1]);
+            int rawY = parseInt(toks[2]);
+            // Compute source range once (lazy init)
+            static int minX = std::numeric_limits<int>::max();
+            static int minY = std::numeric_limits<int>::max();
+            static int maxX = std::numeric_limits<int>::min();
+            static int maxY = std::numeric_limits<int>::min();
+            minX = std::min(minX, rawX);
+            minY = std::min(minY, rawY);
+            maxX = std::max(maxX, rawX);
+            maxY = std::max(maxY, rawY);
+            const double nx = (maxX > minX) ? (static_cast<double>(rawX - minX) / static_cast<double>(maxX - minX)) : 0.0;
+            const double ny = (maxY > minY) ? (static_cast<double>(rawY - minY) / static_cast<double>(maxY - minY)) : 0.0;
+            x = static_cast<int>(std::round(nx * (gridCols - 1)));
+            y = static_cast<int>(std::round(ny * (gridRows - 1)));
         }
         else
         {
@@ -295,12 +309,18 @@ void PDNLoadMapper::loadVoltageSources(PDNNetwork &network, const std::string &p
         {
             std::cerr << "Warning: Unknown pad type: " << padType << std::endl;
         }
+        totalCount++;
     }
 
     std::cout << "Loaded " << padCount << " voltage sources from " << padlocPath << std::endl;
     if (invalidCount > 0)
     {
         std::cerr << "Warning: " << invalidCount << " invalid pad locations skipped" << std::endl;
+    }
+    if (padlocFormat == 0 || padlocFormat == 1)
+    {
+        std::cout << "  padloc format 0/1 projected into grid: total pads read=" << totalCount
+                  << ", placed=" << padCount << ", grid=" << gridRows << "x" << gridCols << std::endl;
     }
 }
 
