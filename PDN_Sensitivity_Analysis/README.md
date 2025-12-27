@@ -8,6 +8,10 @@
 
 ```bash
 cd PDN_Sensitivity_Analysis
+
+# 使用的是 C++ 內建的 Eigen 套件解線性方程
+brew install eigen
+
 cmake -S . -B build
 cmake --build build
 
